@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Page</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://khalti.com/static/khalti-checkout.js"></script>
+    <link rel="stylesheet" href="/styles/payment.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Select a Payment Method</h2>
+
+        <!-- eSewa Payment Form -->
+        <form action="https://rc-epay.esewa.com.np/api/epay/main/v2/form" method="POST" class="payment-form">
+            <h3>Pay with eSewa</h3>
+            <input type="hidden" name="amount" value="{{amount}}" />
+            <input type="hidden" name="tax_amount" value="{{tax_amount}}" />
+            <input type="hidden" name="total_amount" value="{{total_amount}}" />
+            <input type="hidden" name="transaction_uuid" value="{{transaction_uuid}}" />
+            <input type="hidden" name="product_code" value="{{product_code}}" />
+            <input type="hidden" name="success_url" value="{{success_url}}" />
+            <input type="hidden" name="failure_url" value="{{failure_url}}" />
+            <button type="submit" class="esewa-btn">Pay with eSewa</button>
+        </form>
+
+        <!-- Stripe Payment Form -->
+        <form id="payment-form" action="/payment/stripe" method="POST" class="payment-form">
+            <h3>Pay with Stripe</h3>
+            <label for="card-element">Credit or Debit Card</label>
+            <div id="card-element"></div>
+            <button type="submit" class="stripe-btn">Submit Payment</button>
+        </form>
+
+        <form action="/payment/khalti" method="post">
+        <button id="khalti-button" class="khalti-btn">Pay with Khalti</button>
+        </form>
+    </div>
+</body>
+</html>
