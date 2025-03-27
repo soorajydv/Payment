@@ -28,13 +28,22 @@
         <!-- Stripe Payment Form -->
         <form id="payment-form" action="/payment/stripe" method="POST" class="payment-form">
             <h3>Pay with Stripe</h3>
-            <label for="card-element">Credit or Debit Card</label>
             <div id="card-element"></div>
-            <button type="submit" class="stripe-btn">Submit Payment</button>
+            <button type="submit" class="stripe-btn">Pay via Stripe</button>
         </form>
 
+        <!-- Khalti Payment Form -->
         <form action="/payment/khalti" method="post">
-        <button id="khalti-button" class="khalti-btn">Pay with Khalti</button>
+            <h3>Pay with Khalti</h3>
+            <div id="card-element"></div>
+            <button id="khalti-button" class="khalti-btn">Pay via Khalti</button>
+        </form>
+
+        <!-- Paypal Payment Form -->
+        <form id="payment-form" action="/payment/paypal" method="POST" class="payment-form">
+            <h3>Pay with Paypal</h3>
+            <div id="card-element"></div>
+            <button type="submit" class="paypal-btn">Pay via Paypal</button>
         </form>
     </div>
 </body>
