@@ -16,6 +16,8 @@ const env = {
   PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
   PAYPAL_SECRET_KEY: process.env.PAYPAL_SECRET_KEY,
   PAYPAL_BASE_URL: process.env.PAYPAL_BASE_URL,
+  PAYMENT_SUCCESS_URL: process.env.PAYMENT_SUCCESS_URL,
+  PAYMENT_FAILURE_URL: process.env.PAYMENT_FAILURE_URL,
 };
 
 export default env;
