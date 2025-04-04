@@ -1,49 +1,41 @@
-import  env from '../utils/env.config.js';
-import { generateEsewaSignature } from '../utils/esewaSignature.js';
-import { v4 as uuidv4 } from 'uuid'; 
+import CryptoJS from 'crypto-js';
+import { sendSuccess, sendError, sendBadRequest } from '../utils/response.utils.js';
+import env from '../utils/env.config.js';
 
-const esewaPayment = async(req, res) => {
-    const amount = 100;
-    const tax_amount = 10;
-    const product_service_charge = 0;
-    const product_delivery_charge = 0;
-    const transaction_uuid = uuidv4().replace(/-/g, '');
-
-    const total_amount = amount + tax_amount + product_service_charge + product_delivery_charge;
-    const product_code = env.ESEWA_MERCHANT_CODE;
-    const success_url = env.ESEWA_SUCCESS_URL;
-    const failure_url = env.ESEWA_FAILURE_URL;
-    const signed_field_names = "total_amount,transaction_uuid,product_code";
-    const signature = generateEsewaSignature(total_amount, transaction_uuid, product_code);
-
-    console.log({
-        "amount": amount,
-        "tax_amount": tax_amount,
-        "product_service_charge": product_service_charge,
-        "product_delivery_charge": product_delivery_charge,
-        "total_amount": total_amount,
-        "transaction_uuid": transaction_uuid,
-        "product_code": product_code,
-        "success_url": success_url,
-        "failure_url": failure_url,
-        "signed_field_names": signed_field_names,
-        "signature": signature
-    });
+class EsewaPaymentController {
     
-    
-    return res.render('payment', {
-        amount,
-        tax_amount,
-        product_service_charge,
-        product_delivery_charge,
-        total_amount,
-        transaction_uuid,
-        product_code,
-        success_url,
-        failure_url,
-        signed_field_names,
-        signature
-    });
-};
+    constructor() {
+        this.verifyEsewaPayment = this.verifyEsewaPayment.bind(this);
+        this.generateEsewaSignature = this.generateEsewaSignature.bind(this);
+    }
 
-export default esewaPayment;
+    generateEsewaSignature = async (total_amount, transaction_uuid, product_code) => {
+        // Correct format for string to sign (values only, concatenated with '&')
+        const stringToSign = `${total_amount}&${transaction_uuid}&${product_code}`;
+    
+        const hash = CryptoJS.HmacSHA256(stringToSign, env.ESEWA_SECRET_KEY);
+        const signature = CryptoJS.enc.Base64.stringify(hash);
+    
+        return signature;
+    }    
+    
+    verifyEsewaPayment = async(req, res) =>{
+        const {token} = req.body;
+
+        if(!token) {
+            return sendBadRequest(res,"Token not provided, please provide a valid token provided in esewa return URL");
+        }
+
+        const queryBody = Buffer.from(token, 'base64').toString('ascii');
+        const paymentResponse = JSON.parse(queryBody);
+
+        if(paymentResponse.status !== "COMPLETE") {
+            return sendError(res,"Payment not complete");
+        }
+  
+        return sendSuccess(res,'Payment verified successfully',paymentResponse);
+    }
+}
+
+const esewaPaymentController = new EsewaPaymentController();
+export default esewaPaymentController;

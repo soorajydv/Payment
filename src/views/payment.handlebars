@@ -1,50 +1,113 @@
-<!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Payment Page</title>
+
     <script src="https://js.stripe.com/v3/"></script>
     <script src="https://khalti.com/static/khalti-checkout.js"></script>
-    <link rel="stylesheet" href="/styles/payment.css">
-</head>
-<body>
+    <link rel="stylesheet" href="/styles/payment.css" />
+
+    <!-- CryptoJS for Signature Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/hmac-sha256.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/enc-base64.min.js"></script>
+  </head>
+  
+  <body>
     <div class="container">
-        <h2>Select a Payment Method</h2>
+      <h2>Select a Payment Method</h2>
 
-        <!-- eSewa Payment Form -->
-        <form action="https://rc-epay.esewa.com.np/api/epay/main/v2/form" method="POST" class="payment-form">
-            <h3>Pay with eSewa</h3>
-            <input type="hidden" name="amount" value="{{amount}}" />
-            <input type="hidden" name="tax_amount" value="{{tax_amount}}" />
-            <input type="hidden" name="total_amount" value="{{total_amount}}" />
-            <input type="hidden" name="transaction_uuid" value="{{transaction_uuid}}" />
-            <input type="hidden" name="product_code" value="{{product_code}}" />
-            <input type="hidden" name="success_url" value="{{success_url}}" />
-            <input type="hidden" name="failure_url" value="{{failure_url}}" />
-            <button type="submit" class="esewa-btn">Pay with eSewa</button>
-        </form>
+      <!-- eSewa Payment Form -->
+      <form
+        id="esewa-form"
+        action="https://rc-epay.esewa.com.np/api/epay/main/v2/form"
+        method="POST"
+        onsubmit="generateEsewaSignature(event)"
+      >
+        <input type="text" id="amount" name="amount" value="100" required />
+        <input type="text" id="tax_amount" name="tax_amount" value="10" required />
+        <input type="text" id="total_amount" name="total_amount" value="110" required />
+        
+        <!-- Unique Transaction UUID -->
+        <input type="text" id="transaction_uuid" name="transaction_uuid" required />
 
-        <!-- Stripe Payment Form -->
-        <form id="payment-form" action="/payment/stripe" method="POST" class="payment-form">
-            <h3>Pay with Stripe</h3>
-            <div id="card-element"></div>
-            <button type="submit" class="stripe-btn">Pay via Stripe</button>
-        </form>
+        <input type="text" id="product_code" name="product_code" value="EPAYTEST" required />
+        <input type="text" id="product_service_charge" name="product_service_charge" value="0" required />
+        <input type="text" id="product_delivery_charge" name="product_delivery_charge" value="0" required />
+        <input type="text" id="success_url" name="success_url" value="https://developer.esewa.com.np/success" required />
+        <input type="text" id="failure_url" name="failure_url" value="https://developer.esewa.com.np/failure" required />
+        <input type="text" id="signed_field_names" name="signed_field_names" value="total_amount,transaction_uuid,product_code" required />
 
-        <!-- Khalti Payment Form -->
-        <form action="/payment/khalti" method="post">
-            <h3>Pay with Khalti</h3>
-            <div id="card-element"></div>
-            <button id="khalti-button" class="khalti-btn">Pay via Khalti</button>
-        </form>
+        <!-- Signature Field (Dynamically Generated) -->
+        <input type="text" id="signature" name="signature" required />
 
-        <!-- Paypal Payment Form -->
-        <form id="payment-form" action="/payment/paypal" method="POST" class="payment-form">
-            <h3>Pay with Paypal</h3>
-            <div id="card-element"></div>
-            <button type="submit" class="paypal-btn">Pay via Paypal</button>
-        </form>
+        <input value="Submit" type="submit" />
+      </form>
+
+      <!-- Stripe Payment Form -->
+      <form id="payment-form" action="/payment/stripe" method="POST" class="payment-form">
+        <h3>Pay with Stripe</h3>
+        <div id="card-element"></div>
+        <button type="submit" class="stripe-btn">Pay via Stripe</button>
+      </form>
+
+      <!-- Khalti Payment Form -->
+      <form action="/payment/khalti" method="post">
+        <h3>Pay with Khalti</h3>
+        <div id="card-element"></div>
+        <button id="khalti-button" class="khalti-btn">Pay via Khalti</button>
+      </form>
+
+      <!-- Paypal Payment Form -->
+      <form id="payment-form" action="/payment/paypal" method="POST" class="payment-form">
+        <h3>Pay with Paypal</h3>
+        <div id="card-element"></div>
+        <button type="submit" class="paypal-btn">Pay via Paypal</button>
+      </form>
     </div>
-</body>
+
+    <script>
+        const secretKey = "8gBm/:&EnhH.1/q"; // Replace with actual eSewa secret key
+
+        function generateEsewaSignature() {
+          const total_amount = document.getElementById("total_amount").value;
+          const transactionUUID = generateUUID();
+          document.getElementById("transaction_uuid").value = transactionUUID;
+          const productCode = document.getElementById("product_code").value;
+          
+          const dataToSign = `total_amount=${total_amount},transaction_uuid=${transactionUUID},product_code=${productCode}`;
+
+          // Generate HMAC-SHA256 signature
+          const hash = CryptoJS.HmacSHA256(dataToSign, secretKey);
+          const signature = CryptoJS.enc.Base64.stringify(hash);
+
+          // Assign the signature to the hidden input field
+          document.getElementById("signature").value = signature;
+          console.log("Signature: ", signature);
+          console.log("Transaction UUID: ", transactionUUID);
+          console.log("TotalAmount: ", total_amount);
+          console.log("Product Code: ", productCode);
+          console.log("Data to Sign: ", dataToSign);
+          console.log("Secret Key: ", secretKey);
+          console.log("Generated Signature: ", signature);
+        }
+
+        function generateUUID() {
+          return 'xxxx-xxxx-4xxx-yxxx-xxxx'.replace(/[xy]/g, function (c) {
+            const r = (Math.random() * 16) | 0,
+              v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+        }
+
+        // Ensure UUID and Signature are set on page load
+        window.onload = function () {
+          generateEsewaSignature();
+        };
+
+        // Recalculate signature when amount changes
+        document.getElementById("amount").addEventListener("input", generateEsewaSignature);
+      </script>
+  </body>
 </html>

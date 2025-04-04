@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { zodSchemaValidator } from './requestBody.validator.js';
+import { PAYMENT_METHODS } from '../constants/paymentMethods.js';
 
 export const validateStripePayment = z.object({
     amount: z.number().positive(),
-    currency: z.enum(['usd', 'npr'])
+    currency: z.enum(['usd', 'npr']).optional()
 });
 
 export const validateEsewaPayment = z.object({
@@ -50,6 +51,11 @@ export const paypalOrderSchema = z.object({
     )
 });
 
+const verifyPaymentValidator = z.object({
+    method: z.enum(Object.values(PAYMENT_METHODS)),
+});
+
+export const verifyPayment = zodSchemaValidator(verifyPaymentValidator);
 export const stripePaymentValidator = zodSchemaValidator(validateStripePayment);
 export const esewaPaymentValidator = zodSchemaValidator(validateEsewaPayment);
 export const khaltiPaymentValidator = zodSchemaValidator(validateKhaltiPayment);

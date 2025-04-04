@@ -1,47 +1,75 @@
-import request from 'request';
-import { env } from '../utils/env.config.js';
+import axios from 'axios';
+import env from '../utils/env.config.js';
+import { sendBadRequest, sendError, sendSuccess } from '../utils/response.utils.js';
 
-export const initiatePayment = (req, res) => {
-  console.log(env.KHALTI_SECRET_KEY);
-  
-  const options = {
-    method: 'POST',
-    url: 'https://dev.khalti.com/api/v2/epayment/initiate/',
-    headers: {
-      'Authorization':`Key ${env.KHALTI_SECRET_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      return_url: 'http://google.com/', // Replace with your actual return URL
-      website_url: 'https://facebook.com/', // Replace with your actual website URL
-      amount: '1000', // Amount in paisa (1000 = 10.00 NPR)
-      purchase_order_id: 'Order01', // Unique order ID
-      purchase_order_name: 'Test Order', // Order name
-      customer_info: {
-        name: 'Ram Bahadur', // Customer's name
-        email: 'test@khalti.com', // Customer's email
-        phone: '9800000001', // Customer's phone number
-      },
-    }),
-  };
+class KhaltiPaymentController {
+  constructor() {
+    this.initKhaltiPayment = this.initKhaltiPayment.bind(this);
+    this.verifyKhaltiPayment = this.verifyKhaltiPayment.bind(this);
+  }
 
-  request(options, (error, response) => {
-    if (error) {
-      console.error('Error initiating payment:', error);
-      return res.status(500).json({ message: 'Payment initiation failed', error: error });
-    }
-    // Parse the response from Khalti (if needed)
-    const responseData = JSON.parse(response.body);
-    console.log('Khalti Response:', responseData);
+  initKhaltiPayment = async (req, res) => {
+    const paymentData = {
+      return_url: `${env.PAYMENT_SUCCESS_URL}`,
+      website_url: `${env.PAYMENT_FAILURE_URL}`,
+      ...req.body,
+    };
 
-    // You can handle further response, like redirecting the user or processing the data
-    if (responseData.pidx) {
-      return res.json({
-        message: 'Payment initiated successfully',
-        token: responseData.token, // Token from Khalti API
+    try {
+      const response = await axios.post(`${env.KHALTI_GATEWAY_URL}/epayment/initiate/`, paymentData, {
+        headers: {
+          'Authorization': `Key ${env.KHALTI_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
       });
-    } else {
-      return res.status(400).json({ message: 'Payment initiation failed', details: responseData });
+
+      if (!response.data.pidx && !response.data.payment_url) {
+        return sendBadRequest(res, 'Khalti payment failed to initiate', response.data);
+      }
+
+      return sendSuccess(res, 'Khalti payment initiated, open the payment URL',response.data)
+
+    } catch (error) {
+      console.error('Error initiating Khalti payment:', error);
+      return sendError(res,'Payment initiation failed',error.message);
     }
-  });
-};
+  }
+
+  verifyKhaltiPayment = async (req, res) => {
+    const { pidx } = req.query;
+
+    if (!pidx) {
+      return sendError(res, 'Missing payment ID (pidx) in request.query');
+    }
+
+    const payload = {
+      pidx,
+    };
+
+    try {
+      const response = await axios.post(
+        `${env.KHALTI_GATEWAY_URL}/epayment/lookup/`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Key ${env.KHALTI_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Check if payment verification was successful
+      if (response.data.status !== 'Completed') {
+        return sendSuccess(res, 'Payment verification failed');
+      }
+      return sendSuccess(res, 'Payment verified', response.data);
+ 
+    } catch (error) {
+      console.error('Error verifying Khalti payment:', error.response || error.message);
+      return sendError(res, 'Error verifying payment', error.response ? error.response.data : error.message);
+    }
+  }
+}
+
+const khaltiPaymentController = new KhaltiPaymentController();
+export default khaltiPaymentController;
